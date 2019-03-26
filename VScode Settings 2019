@@ -1,0 +1,8 @@
+{
+    "code-runner.executorMap": {
+        "python": "E:\\Python3.7.2\\python.exe"
+    },
+    "code-runner.runInTerminal": true,
+    "window.zoomLevel": -1,
+    "workbench.colorTheme": "Blakai Theme"
+}
