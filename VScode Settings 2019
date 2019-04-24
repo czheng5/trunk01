@@ -4,5 +4,11 @@
     },
     "code-runner.runInTerminal": true,
     "window.zoomLevel": -1,
-    "workbench.colorTheme": "Blakai Theme"
+    "workbench.colorTheme": "Blakai Theme",
+    "editor.fontSize": 14,
+    "editor.tabSize":4,
+    "editor.wordWrap":"on",
+    "terminal.integrated.fontSize": 16,
+    "terminal.integrated.shell.windows": "D:\\Git\\bin\\bash.exe",
+    "code-runner.runInTerminal": true,
 }
