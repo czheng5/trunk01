@@ -10,5 +10,4 @@
     "editor.wordWrap":"on",
     "terminal.integrated.fontSize": 16,
     "terminal.integrated.shell.windows": "D:\\Git\\bin\\bash.exe", #location of Git folder
-    "code-runner.runInTerminal": true,
 }
