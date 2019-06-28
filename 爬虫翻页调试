@@ -1,0 +1,72 @@
+from requests_html import HTMLSession
+import requests
+
+
+# 保存图片到bg/目录
+#def save_image(url, title):
+#    img_response = requests.get(url)
+#    with open('./bg/'+title+'.jpg', 'wb') as file:
+#        file.write(img_response.content)
+
+# 背景图片地址，这里选择1920*1080的背景图片
+url = "http://www.win4000.com/wallpaper_2358_0_10_1.html"
+
+session = HTMLSession()
+r = session.get(url)
+
+# 查找页面中背景图，找到链接，访问查看大图，并获取大图地址
+items_img = r.html.find('ul.clearfix > li > a')
+for a in items_img:
+    a_url = a.attrs['href']
+    if "/wallpaper_detail" in a_url:
+        r = session.get(a_url)
+        item_a = r.html.find('img.pic-large', first=True)
+        #print(item_a)
+        url = item_a.attrs['src']
+        title = item_a.attrs['title']
+        print(url+title, '1')
+        #save_image(url, title)
+
+        #倒数em
+        n=int(r.html.find('div>em')[0].text)-1
+        num=n
+        #下页url
+        nxt = r.html.find('div.pic-next-img > a', first=True).attrs['href']
+        #print(nxt)
+        
+        while n>0:
+        #进入下一页
+            s=HTMLSession().get(f'{nxt}')
+            item_b = s.html.find('img.pic-large', first=True)
+        #print(item_a)
+        
+        #扒图
+            url = item_b.attrs['src']
+            title = item_b.attrs['title']
+            #save_image(url, title)
+            print(url+title+f' {num+2-n}')
+            nxt=s.html.find('div.pic-next-img > a', first=True).attrs['href']
+        #倒计时-1
+            n-=1
+
+
+
+
+
+
+
+#（点开->（扒图->下一张->扒图...）->下一张）
+
+
+
+
+
+#imgurl
+
+
+#for imgurl:
+    #get pic1
+#    try:
+#        img1url
+#        for img1url:
+            #get pic2->n
