@@ -30,11 +30,10 @@ for a in items_img:
         #倒数em
         n=int(r.html.find('div>em')[0].text)-1
         num=n
-        #下页url
+        #首发下页url
         nxt = r.html.find('div.pic-next-img > a', first=True).attrs['href']
         #print(nxt)
         
-        #翻页模块化
         while n>0:
         #进入下一页
             s=HTMLSession().get(f'{nxt}')
@@ -46,7 +45,10 @@ for a in items_img:
             title = item_b.attrs['title']
             #save_image(url, title)
             print(url+title+f' {num+2-n}')
+        
+        #循环下页URL
             nxt=s.html.find('div.pic-next-img > a', first=True).attrs['href']
+        
         #倒计时-1
             n-=1
 
