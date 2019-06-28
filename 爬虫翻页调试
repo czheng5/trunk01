@@ -34,6 +34,7 @@ for a in items_img:
         nxt = r.html.find('div.pic-next-img > a', first=True).attrs['href']
         #print(nxt)
         
+        #翻页模块化
         while n>0:
         #进入下一页
             s=HTMLSession().get(f'{nxt}')
