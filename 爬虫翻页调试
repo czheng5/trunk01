@@ -21,7 +21,6 @@ for a in items_img:
     if "/wallpaper_detail" in a_url:
         r = session.get(a_url)
         item_a = r.html.find('img.pic-large', first=True)
-        #print(item_a)
         url = item_a.attrs['src']
         title = item_a.attrs['title']
         print(url+title, '1')
@@ -30,15 +29,14 @@ for a in items_img:
         #倒数em
         n=int(r.html.find('div>em')[0].text)-1
         num=n
+
         #首发下页url
         nxt = r.html.find('div.pic-next-img > a', first=True).attrs['href']
-        #print(nxt)
         
         while n>0:
         #进入下一页
             s=HTMLSession().get(f'{nxt}')
             item_b = s.html.find('img.pic-large', first=True)
-        #print(item_a)
         
         #扒图
             url = item_b.attrs['src']
