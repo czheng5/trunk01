@@ -1,0 +1,125 @@
+"""
+Filename: ParseWY.py
+Path: d:\TPL_Py
+Created Date: Monday, July 1st 2019, 10:36:29 am
+Author: CNTP
+
+Copyright (c) 2019 Your Company
+"""
+from requests_html import HTMLSession
+import time
+
+url='https://www.guahao.com/hospital/2/%E4%B8%8A%E6%B5%B7/all/%E4%B8%8D%E9%99%90'
+
+def enter_url(the_url):
+    global r
+    r=HTMLSession().get(the_url)
+    return r
+
+def get_doc(prompt):
+    #global r
+    r.html.render(sleep=2)
+    li=[]
+    b = prompt.html.find('div.word-break > h1 > strong')
+    c = prompt.html.find('div.word-break > h1 > span')
+    a = prompt.html.find('ul.fix-clear>li.J_SchedulesItem>div')
+
+    if c:
+        sche=[]
+        try:        
+            for d in a:
+                e=d.find('p')[3].text
+                sche.append(e)
+            
+        except Exception as e:
+            print(e)
+            pass
+
+        name = b[0].text
+
+        for item in c:
+            li.append(item.text)
+
+        if name!=dept_name and sche:
+            return [hos_name, dept_name, name, ''.join(li), sche]
+
+        elif name!=dept_name and sche==[]:
+            return [hos_name, dept_name, name, ''.join(li), '暂无排班']
+
+def parse_weiyi():
+    global hos_name, dept_name
+    SH_hos_li_page=enter_url(url)  #上海所有医院的列表
+    n=0
+    while True:
+        np=SH_hos_li_page.html.find('div.g-pagination-buttom>form>div>a.J_pageNext_gh')
+        if np:
+            n+=1
+            #医院
+            SH_hos_li_page=enter_url(url+f'/p{n}')
+            temp=SH_hos_li_page.html.find('ul.hos_ul>li>a')
+            
+            for new in temp:
+                new_url=new.attrs['href']
+                #医院名
+                hos_name=new.text
+                hospital=enter_url(new_url)
+                #科室
+                departments=hospital.html.find('div.grid-content>ul>li.g-clear>p>span>a')
+                
+                for department in departments:
+                    try:
+                        dept_name=department.attrs['title']
+                    except KeyError:
+                        dept_name=department.text
+                    department_url=department.attrs['href'] #科室URL
+                    dep=enter_url(department_url) #进入科室
+                    
+                    try:
+                        all_doctor_url=dep.html.find("div.g-hddoctor-list>div.more>a")[0].attrs['href']
+                        time.sleep(1)
+                        all_doc=enter_url(all_doctor_url)
+
+                        #开始翻页
+                        m=0
+                        while True:
+                            m+=1
+                            np_doc=all_doc.html.find('div.g-pagination-buttom>form>div>a.J_pageNext_gh')
+                            
+                            if np_doc:
+                                all_doc=enter_url(all_doctor_url+f'?pageNo={m}')
+                                doctors=all_doc.html.find("div.g-doctor-item2>div>dl>dt>a")
+                        
+                                for doctor in doctors:
+                                    doctor_url=doctor.attrs['href'] #各医生网页链接
+                                    doctor_info=enter_url(doctor_url)   #进入各医生网页
+                                    doct=get_doc(doctor_info)
+                            
+                                    if doct!=None:
+                                        print(doct)
+
+                            else:
+                                break
+
+                    except IndexError:
+                        #医生名字，职称
+                        doctors=r.html.find("div.g-hddoctor-list>div>dl>dt")
+            
+                        for doctor in doctors:
+                            name=doctor.find('a')[0].text
+                            
+                            if name!=dept_name:
+                                name_link=doctor.find('a')[0].attrs['href']
+                                get_doc(enter_url(name_link))
+
+        else:
+            break
+
+
+if __name__ == "__main__":
+    parse_weiyi()
+
+
+
+
+#起点：微医三甲搜索结果 => levloop医院 [ *医院 => levloop科室 [ *科室 => 进入全部医师页面 => levloop医师 [ 每个（*医师 && *职称） => 写入数据库 => 模拟用户点击下一页] ] => 医院列表下一页]
+#写入数据库格式：[医师，职称，科室，医院] => {医院：{医师，职称，科室}}
