@@ -20,9 +20,10 @@ def get_doc(prompt):
     #global r
     r.html.render(sleep=2)
     li=[]
+    a = prompt.html.find('ul.fix-clear>li.J_SchedulesItem>div')
     b = prompt.html.find('div.word-break > h1 > strong')
     c = prompt.html.find('div.word-break > h1 > span')
-    a = prompt.html.find('ul.fix-clear>li.J_SchedulesItem>div')
+    loc = prompt.html.find('div.g-breadcrumb > a')[1].text
 
     if c:
         sche=[]
@@ -116,8 +117,30 @@ def parse_weiyi():
 
 
 if __name__ == "__main__":
-    parse_weiyi()
-
+    
+    while True:
+        
+        try:
+            parse_weiyi()
+            option = input("Parse Again? Input anything to continue, or enter Q to quit: \n")
+        
+            if option == "Q" or option == "q":
+                print("\nHave a nice day! Good-Bye!\n")
+                quit()
+        
+            else:
+                pass
+    
+        except Exception as e:
+            print(e)
+            option = input("An error occured, input anything to restart, or enter Q to quit: \n")
+        
+            if option == "Q" or option == "q":
+                print("\nHave a nice day! Good-Bye!\n")
+                quit()
+        
+            else:
+                pass
 
 
 
