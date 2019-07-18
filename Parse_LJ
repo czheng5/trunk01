@@ -1,0 +1,108 @@
+'''
+Filename: Parse_LJ.py
+Created Date: Wednesday, July 17th 2019, 10:25:26 am
+Author: Chengyao Zheng
+
+Copyright (c) 2019 Chengyao Zheng
+'''
+from requests_html import HTMLSession
+from collections import defaultdict
+import requests
+import random
+import time
+
+loc_dict={'上海':'sh', '北京':'bj', '天津':'tj', '重庆':'cq'}
+#return [city, district, NORE, address, structure, area, YOB, TPrice, UPrice]
+
+def enter_url(prompt):
+    global r
+    user_agent_list = [
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_3) AppleWebKit/535.20 (KHTML, like Gecko) Chrome/19.0.1036.7 Safari/535.20",
+    "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.71 Safari/537.1 LBBROWSER",
+    "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/535.11 (KHTML, like Gecko) Chrome/17.0.963.84 Safari/535.11 LBBROWSER",
+    "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.1; WOW64; Trident/5.0; SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; Media Center PC 6.0; .NET4.0C; .NET4.0E)",
+    "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; QQDownload 732; .NET4.0C; .NET4.0E)",
+    "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; Trident/4.0; SV1; QQDownload 732; .NET4.0C; .NET4.0E; 360SE)",
+    "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; QQDownload 732; .NET4.0C; .NET4.0E)",
+    "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.89 Safari/537.1",
+    "Mozilla/5.0 (iPad; U; CPU OS 4_2_1 like Mac OS X; zh-cn) AppleWebKit/533.17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8C148 Safari/6533.18.5",
+    "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:2.0b13pre) Gecko/20110307 Firefox/4.0b13pre",
+    "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:16.0) Gecko/20100101 Firefox/16.0",
+    "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11",
+    "Mozilla/5.0 (X11; U; Linux x86_64; zh-CN; rv:1.9.2.10) Gecko/20100922 Ubuntu/10.10 (maverick) Firefox/3.6.10",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36"
+    ]
+    r=HTMLSession().get(prompt,  headers={'user-agent': random.choice(user_agent_list)})
+    #r.html.render(scrolldown=1)
+    return r
+
+
+def get_target(prompt):
+    global structure, NORE, area, TPrice
+    enter_url(prompt)
+#    r.html.render(sleep=2) #以防万一，虽然加了貌似反而没用
+    #总价 TPrice: //div[contains(@class,"content")]/div[contains(@class,"price")]       
+    TPrice=r.html.find('div.content > div.price', first=True).text[:4]
+    #户型 structure: //div[contains(@class,"base")]/div[contains(@class,"content")]/ul/li [0][4:],[1][4:]       
+    structure=r.html.find('div.base > div.content > ul > li', first=True).text[4:]
+    #建筑面积 area: //div[contains(@class,"area")]/div      
+    area=r.html.find('div.houseInfo > div.area > div.mainInfo', first=True).text
+    #均价 UPrice: //span[contains(@class,"unitPriceValue")]       
+    UPrice=r.html.find('span.unitPriceValue', first=True).text
+    #查询小区详情url处 //div[contains(@class,"xiaoquCard")]/div[contains(@class,"xiaoqu_header")]/a
+    real_estate=r.html.find('div.communityName > a', first=True)
+    NORE=real_estate.text
+    detail_url=''.join(real_estate.absolute_links)
+    #print([city, district, street, NORE, structure, area, TPrice, UPrice])
+    #print(detail_url)
+    get_target_detail(detail_url)
+
+
+def get_target_detail(prompt):
+    enter_url(prompt)
+    address=r.html.find('div.detailDesc', first=True).text
+    YOB=r.html.find('div.xiaoquInfoItem > span.xiaoquInfoContent', first=True).text
+    UPrice=r.html.find('span.xiaoquUnitPrice', first=True).text+'元/平米'
+    #return [city, district, NORE, address, structure, area, YOB, TPrice, UPrice]
+    print([city, district, street, NORE, address, structure, area, YOB, TPrice, UPrice])
+#############################
+    #quit()
+###########测试退出###########
+
+def location_selector(prompt):
+    global city
+    decision=input(prompt)
+    if decision in loc_dict:
+        loc=loc_dict[decision]
+        city=decision
+    return loc
+
+
+def main():
+    global district
+    global street
+    loc=location_selector('请输入目标地名（例：“上海市” 则输入 “上海”）：\n')
+    url=f'https://{loc}.lianjia.com/ershoufang/'
+    enter_url(url)
+    #然后从浦东开始
+    #区：//div[contains(@class,"position")]/dl/dd/div[contains(@data-role,"ershoufang")]/div
+    districts=r.html.find('div.position > dl > dd > div > div', first=True).find('a') #区
+    for item in districts:
+        district=item.text
+        district_url=''.join(item.absolute_links)
+        enter_url(district_url)
+        streets=r.html.find('div.position > dl > dd > div > div')[1].find('a') #片
+        for s_item in streets:
+            street=s_item.text
+            street_url=''.join(s_item.absolute_links)
+            #time.sleep(random.randint(1,10))
+            enter_url(street_url)
+            #房子在这翻页
+            houses=r.html.find('div.item> a.title')       #  > li > div > div > a
+            for house in houses:
+                house_url=house.attrs['href']
+                get_target(house_url)
+
+
+if __name__ == "__main__":
+    main()
