@@ -1,0 +1,40 @@
+# class Parser():
+    # def __init__(self):
+        # self.house=dict()
+        # self.real_estates=dict()
+
+    # def location_selector(self, prompt):
+        # global city
+        # decision=input(prompt)
+    
+        # if decision in loc_dict:
+        #     loc=loc_dict[decision]
+        #     city=decision
+
+        # return loc
+
+    # def parse_it(self):
+        # locl=self.location_selector('请输入目标地名（例：“上海市” 则输入 “上海”）：\n')
+        # url=f'https://{locl}.lianjia.com/ershoufang/'
+    # --> district
+    # ----> street
+    # ----> House()
+    # ------> Real_estate()
+    # ------> c.execute -> write()
+# class House():
+    # def __init__(self,city, district, street, structure, area, TPrice):
+        # self.city=city
+        # self.district=district
+        # self.street=street
+        # self.structure=structure
+        # self.area=area
+        # self.TPrice=TPrice
+# class Real_estate():
+    # def __init__(self,city, district, street, NORE, address, UPrice, YOB):
+        # self.city=city
+        # self.district=district
+        # self.street=street
+        # self.NORE=NORE
+        # self.address=address
+        # self.UPrice=UPrice
+        # self.YOB=YOB
