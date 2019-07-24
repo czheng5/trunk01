@@ -1,3 +1,56 @@
+from requests_html import HTMLSession
+from collections import defaultdict
+import mysql.connector
+import requests
+import random
+import time
+import sys
+import traceback
+import logging
+
+loc_dict={'上海':'sh', '北京':'bj', '天津':'tj', '重庆':'cq'}
+
+
+user_agent_list = [
+    'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11', 
+    'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1063.0 Safari/536.3', 
+    'Mozilla/5.0 (Windows NT 6.2) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1062.0 Safari/536.3', 
+    'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; Trident/4.0; SV1; QQDownload 732; .NET4.0C; .NET4.0E; 360SE)', 
+    'Mozilla/5.0 (Windows NT 6.2) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1061.0 Safari/536.3', 
+    'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; QQDownload 732; .NET4.0C; .NET4.0E)', 
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36', 
+    'Mozilla/5.0 (Windows NT 5.1) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1063.0 Safari/536.3', 
+    'Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/19.77.34.5 Safari/537.1', 
+    'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1061.1 Safari/536.3', 
+    'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:16.0) Gecko/20100101 Firefox/16.0', 
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/536.5 (KHTML, like Gecko) Chrome/19.0.1084.9 Safari/536.5', 
+    'Mozilla/5.0 (Windows NT 6.2) AppleWebKit/536.6 (KHTML, like Gecko) Chrome/20.0.1090.0 Safari/536.6', 
+    'Mozilla/5.0 (Windows NT 6.2) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1061.1 Safari/536.3', 
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_3) AppleWebKit/535.20 (KHTML, like Gecko) Chrome/19.0.1036.7 Safari/535.20', 
+    'Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/535.24 (KHTML, like Gecko) Chrome/19.0.1055.1 Safari/535.24', 
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/535.24 (KHTML, like Gecko) Chrome/19.0.1055.1 Safari/535.24', 
+    'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.6 (KHTML, like Gecko) Chrome/20.0.1092.0 Safari/536.6', 
+    'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.71 Safari/537.1 LBBROWSER', 
+    'Mozilla/5.0 (iPad; U; CPU OS 4_2_1 like Mac OS X; zh-cn) AppleWebKit/533.17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8C148 Safari/6533.18.5', 
+    'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.1; WOW64; Trident/5.0; SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; Media Center PC 6.0; .NET4.0C; .NET4.0E)', 
+    'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/22.0.1207.1 Safari/537.1', 
+    'Mozilla/5.0 (X11; CrOS i686 2268.111.0) AppleWebKit/536.11 (KHTML, like Gecko) Chrome/20.0.1132.57 Safari/536.11', 
+    'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1062.0 Safari/536.3', 
+    'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/535.11 (KHTML, like Gecko) Chrome/17.0.963.84 Safari/535.11 LBBROWSER', 
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_0) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1063.0 Safari/536.3', 
+    'Mozilla/5.0 (Windows NT 6.0) AppleWebKit/536.5 (KHTML, like Gecko) Chrome/19.0.1084.36 Safari/536.5', 
+    'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.89 Safari/537.1', 
+    'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1061.1 Safari/536.3', 
+    'Mozilla/5.0 (X11; U; Linux x86_64; zh-CN; rv:1.9.2.10) Gecko/20100922 Ubuntu/10.10 (maverick) Firefox/3.6.10', 
+    'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:2.0b13pre) Gecko/20110307 Firefox/4.0b13pre'
+    ]
+proxy_list=[
+    '10.100.129.154:11808',
+    '10.100.129.74:8423'
+]
+proxy=random.choice(proxy_list)
+
+
 # class Parser():
     # def __init__(self):
         # self.house=dict()
@@ -13,22 +66,127 @@
 
         # return loc
 
+    # def enter_url(prompt):
+        # global r
+        # while True:
+            # time.sleep(random.randint(3,8))
+            # try:
+                # r=HTMLSession().get(prompt, headers={'user-agent': random.choice(user_agent_list), 'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3', 'accept-encoding': 'gzip, deflate, br', 'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8', }, proxies={'http':'10.100.129.154:11808', 'https':'10.100.129.154:11808'}, cookies=False) #, proxies={'http':'proxy.tplife.com:31151', 'https':'proxy.tplife.com:31151'}
+    
+                # if r.status_code in [200, 304]:
+                    # return r
+                # else:
+                    # time.sleep(random.randint(60,90))
+            # except Exception as e:
+                # traceback.print_exc(file=sys.stdout)
+                # print('Error sleeping...')
+                # time.sleep(random.randint(300, 600))
+
+    # def enter_sub(prompt, referer):
+        # global r
+        # # referer=r.html.base_url
+        # while True:
+            # time.sleep(random.randint(3,8))
+            # try:
+                # r=HTMLSession().get(prompt, headers={'user-agent': random.choice(user_agent_list), 'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3', 'accept-encoding': 'gzip, deflate, br', 'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8', 'referer': referer, }, proxies={'http':'10.100.129.154:11808', 'https':'10.100.129.154:11808'}, cookies=False) #, proxies={'http':'proxy.tplife.com:31151', 'https':'proxy.tplife.com:31151'}
+    
+                # if r.status_code in [200, 304]:
+                    # return r
+                # else:
+                    # time.sleep(random.randint(60,90))
+            # except Exception as e:
+                # traceback.print_exc(file=sys.stdout)
+                # print('Error sleeping...')
+                # time.sleep(random.randint(300, 600))
+
     # def parse_it(self):
         # locl=self.location_selector('请输入目标地名（例：“上海市” 则输入 “上海”）：\n')
         # url=f'https://{locl}.lianjia.com/ershoufang/'
+        # r=enter_url(url)
     # --> district
+        # districts=r.html.find('div.position > dl > dd > div > div', first=True).find('a') ##区元素
     # ----> street
+            # for item in districts:
+                # district=item.text #区名
+                # district_url=''.join(item.absolute_links) #区url
+                # referer=r.html.base_url #取当前页面base_url做进入区级页面的referer
+                # r=enter_sub(district_url, referer)
+                # streets=r.html.find('div.position > dl > dd > div > div')[1].find('a') #片元素
     # ----> House()
+                # for s_item in streets:
+                    # street=s_item.text #片区名字
+                    # street_url=''.join(s_item.absolute_links) #片区链接
+                    # referer=r.html.base_url #取当前页面base_url做进入片级页面的referer
+                    # r=enter_sub(street_url, referer)
+                    ##房子在这翻页
+                    # n=1
     # ------> Real_estate()
+                    # while True:
+                        # temp=r.html.find('ul.sellListContent > li > div.info')
+                        # referer=r.html.base_url
+                
+                        # for a in temp:
+                            # b=a.find('div.houseInfo > a', first=True) ##寻找包含小区名称的元素
+                            # c=a.find('div.houseInfo', first=True).text ##寻找包含户型面积等信息的元素
+                            # d=c.split(' | ') #信息分块
+                            # NORE=b.text
+                            # RE_url=b.attrs['href']
+                            # structure=d[1] #网站格式很恒定，拿下来肯定对
+                            # area=d[2]
+                            # TPrice=a.find('div.totalPrice', first=True).text
+                            # if NORE not in self.real_estate:
+                                # get_target_detail(RE_url)
+                            # else:
+                                # for city, district, street, NORE, address, UPrice, YOB in self.real_estates[NORE]:
+                                    # print([city, district, street, NORE, address, structure, area, YOB, TPrice, UPrice, time_stamp])
     # ------> c.execute -> write()
-# class House():
-    # def __init__(self,city, district, street, structure, area, TPrice):
-        # self.city=city
-        # self.district=district
-        # self.street=street
-        # self.structure=structure
-        # self.area=area
-        # self.TPrice=TPrice
+                                    # c.excecute(f""" insert into Real_Estates_2 values ('{city}', '{district}', '{street}', '{NORE}', '{address}', '{structure}', '{area}', '{YOB}', '{TPrice}', '{UPrice}', '{time_stamp}')""")
+                        ##找base_url页码
+                        # n+=1
+                        # r=enter_sub(street_url+f'pg{n}/', referer)
+                        # temp_base_url=r.html.base_url
+                
+                        # if temp_base_url.endswith(f"pg{n}/") and temp: #有页码
+                            # pass
+
+                        # else:
+                            # break
+                    # m+=1 #这个计数没用了
+                    # time.sleep(random.randint(20, 40))
+                    
+    # def get_target_detail(prompt):
+        # global temp_base_url
+        # referer=r.html.base_url
+        # while True:
+            # try:
+                # enter_sub(prompt, referer) #获取目标项
+                # temp_base_url=r.html.base_url #可以日后加报错日志用
+                # address=r.html.find('div.detailDesc', first=True).text
+                # YOB=r.html.find('div.xiaoquInfoItem > span.xiaoquInfoContent', first=True).text
+                # UPrice=r.html.find('span.xiaoquUnitPrice', first=True).text+'元/平米'
+                # time_stamp=time.asctime(time.localtime())
+                # self.real_estates[NORE] = Real_estate(city, district, street, NORE, address, UPrice, YOB)
+                # print([city, district, street, NORE, address, structure, area, YOB, TPrice, UPrice, time_stamp])
+                # c.execute(f""" insert into Real_Estates_2 values ('{city}', '{district}', '{street}', '{NORE}', '{address}', '{structure}', '{area}', '{YOB}', '{TPrice}', '{UPrice}', '{time_stamp}')""")
+                # conn.commit()
+                # break
+            # except Exception as e:
+                # print(e)
+                # print('Error sleeping...')
+                # time.sleep(random.randint(1800, 4800))
+                # print('Retrying...')
+                
+                
+//# class House():
+//    # def __init__(self,city, district, street, structure, area, TPrice):
+//        # self.city=city
+//        # self.district=district
+//        # self.street=street
+//        # self.structure=structure
+//        # self.area=area
+//        # self.TPrice=TPrice
+//暂时没用，以后可用于统计该小区当时有多少房屋在售        
+        
 # class Real_estate():
     # def __init__(self,city, district, street, NORE, address, UPrice, YOB):
         # self.city=city
@@ -38,3 +196,20 @@
         # self.address=address
         # self.UPrice=UPrice
         # self.YOB=YOB
+
+
+# if __name__ == "__main__":
+    # while True:
+        # conn=mysql.connector.connect(host="10.21.9.129", port="10001", user="crawler", passwd="eko3kf", database="crawler")
+        # c=conn.cursor()
+
+        # try:
+        # Parser.parse_it()
+        # option = input("\nParse Again? Input anything to continue, or enter Q to quit: \n")
+            
+        # if option == "Q" or option == "q":
+            # print("\nHave a nice day! Good-Bye!\n")
+            # conn.close()
+            # quit()
+        # else:
+            # pass
