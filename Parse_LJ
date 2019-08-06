@@ -1,13 +1,7 @@
 # -*- coding=utf-8 -*-
-'''
-Filename: Parse_LJ.py
-Created Date: Wednesday, July 17th 2019, 10:25:26 am
-Author: Chengyao Zheng
-
-Copyright (c) 2019 Chengyao Zheng
-'''
 from requests_html import HTMLSession
 from collections import defaultdict
+from citygenerator import city_gen
 import mysql.connector
 import requests
 import random
@@ -17,12 +11,6 @@ import traceback
 import logging
 import re
 
-loc_dict={'青岛': 'qd', }
-        # '北京':'bj', '武汉': 'wh', '济南': 'jn', 
-        # '昆明': 'km', '烟台': 'yt', '绵阳': 'mianyang', '重庆':'cq', '临沂': 'linyi', 
-        # '广州': 'gz', '深圳': 'sz', '威海': 'weihai', '唐山': 'ts', '南昌': 'nc', 
-        # '赣州': 'ganzhou', '石家庄': 'sjz', '郑州': 'zz', '大连': 'dl', '沈阳': 'sy', '天津':'tj'} # 此处想加几个城市加几个城市
-# loc_list=['sh', 'bj', 'tj', 'cq', 'jn', 'qd', 'zb']
 
 user_agent_list = [
     'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11', 
@@ -69,22 +57,23 @@ class Parser():
         self.c=self.conn.cursor()
         self.city=None
 
-    def location_selector(self):
-        # global city
-        # decision=input(prompt)
-    
-        for decision, loc in loc_dict.items():
-            loc=loc_dict[decision]
-            self.city=decision
-            yield loc
-
-    def enter_url(self, prompt):
+    def enter_url(self, prompt, referer=None):
         global r
         while True:
             time.sleep(random.randint(2,5))
             
             try:
-                r=HTMLSession().get(prompt, headers={'user-agent': random.choice(user_agent_list), 
+                if referer:
+                    r=HTMLSession().get(prompt, headers={'user-agent': random.choice(user_agent_list), 
+                                                    'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3', 
+                                                    'accept-encoding': 'gzip, deflate, br', 
+                                                    'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8', 
+                                                    'referer': referer, }, 
+                                    proxies={'http':'10.100.129.154:11808', 'https':'10.100.129.154:11808'}, 
+                                    cookies=False) 
+
+                else:
+                    r=HTMLSession().get(prompt, headers={'user-agent': random.choice(user_agent_list), 
                                                     'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3', 
                                                     'accept-encoding': 'gzip, deflate, br', 
                                                     'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8', }, 
@@ -98,67 +87,44 @@ class Parser():
             
             except Exception as e:
                 traceback.print_exc()
-                self.write_error_RE_info(traceback.format_stack())
-                print('Error sleeping...')
-                time.sleep(random.randint(300, 600))
-
-    def enter_sub(self, prompt, referer):
-        global r
-        while True:
-            time.sleep(random.randint(1,7))
-            
-            try:
-                r=HTMLSession().get(prompt, headers={'user-agent': random.choice(user_agent_list), 
-                                                    'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3', 
-                                                    'accept-encoding': 'gzip, deflate, br', 
-                                                    'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8', 
-                                                    'referer': referer, }, 
-                                    proxies={'http':'10.100.129.154:11808', 'https':'10.100.129.154:11808'}, 
-                                    cookies=False) 
-    
-                if r.status_code in [200, 304]:
-                    return r
-                else:
-                    time.sleep(random.randint(60,90))
-            
-            except Exception as e:
-                traceback.print_exc()
-                self.write_error_RE_info(traceback.format_stack())
+                self.write_error_RE_info(traceback.format_stack(), str(e))
                 print('Error sleeping...')
                 time.sleep(random.randint(300, 600))
 
     def parse_it(self):
-        global house_id, district, street, NORE, address, structure, area, TPrice, time_stamp, UnitPrice, RE_url
-        for locl in self.location_selector(): # 字典里自动进入下一市
-            url=f'https://{locl}.lianjia.com/ershoufang/'
-            r=self.enter_url(url)
+        global district, street, NORE, address, structure, area, TPrice, time_stamp, UnitPrice, RE_url, RE_id
+
+        for prov, loc, url in city_gen(): # 城市列表里自动进入下一市
+            print(prov)
+            self.city=loc
+            r=self.enter_url(url+'ershoufang/')
     # --> district
             districts=r.html.find('div.position > dl > dd > div > div', first=True).find('a') # # 区元素
 
-            for item in districts[7:]:
+            for item in districts:
                 district_url=''.join(item.absolute_links) # 区链接
-                district=item.text
+                district=item.text # 暂时获取区名
                 referer=r.html.base_url # 取当前页面base_url做进入区级页面的referer
-                r=self.enter_sub(district_url, referer) # 进入该区
+                r=self.enter_url(district_url, referer) # 进入该区
     # ----> street
                 streets=r.html.find('div.position > dl > dd > div > div')[1].find('a') # 片元素
             
                 for s_item in streets:
-                    street_url=''.join(s_item.absolute_links) # 片区链接
-                    street=s_item.text
+                    street_url=''.join(s_item.absolute_links) # 片链接
+                    street=s_item.text  # 暂时获取片名
                     referer=r.html.base_url # 取当前页面base_url做进入片级页面的referer（替换当前referer）
                 
                     if street_url not in self.streets: # 判断该片区是否有爬过（链家网有跳区制作，例如西单在北京西城区，但是东城区的片列表里有西单，点进去以后selected区和片变成 西城-->西单）
                         self.streets.add(street_url)
-                        r=self.enter_sub(street_url, referer)   # 进入该片区
+                        r=self.enter_url(street_url, referer)   # 进入该片区
     # ----> 区名，片区名 以进入片区后网站自动选择的信息为准
                         
                         try:
-                            district=r.html.find('div.position > dl > dd > div > div', first=True).find('a.selected')[0].text  # 区名
-                            street=r.html.find('div.position > dl > dd > div > div')[1].find('a.selected')[0].text # 片区名字
+                            district=r.html.find('div.position > dl > dd > div > div', first=True).find('a.selected')[0].text  # 替换临时区名
+                            street=r.html.find('div.position > dl > dd > div > div')[1].find('a.selected')[0].text # 替换临时片名
                         except:
                             self.write_error_RE_info(traceback.format_stack())
-                        temp=r.html.find('ul.sellListContent > li > div.info')
+                        temp=r.html.find('ul.sellListContent > li > div.info.clear')
                         n=1 # 房子用n数页数翻页，由于第二页才开始出现页数结尾，则n从1开始，页数结尾由2开始('pg2/')
     
                         while True:
@@ -167,12 +133,16 @@ class Parser():
                             for a in temp:
                                 try:
                                     NORE_element=a.find('div.houseInfo > a', first=True) ##寻找包含小区名称的元素
-                                    house_id=a.find('div.title > a', first=True).attrs['data-housecode']
+                                    
+                                    try:
+                                        house_id=a.find('div.title > a', first=True).attrs['data-housecode']
+                                    except:
+                                        house_id=a.find('div.title > a', first=True).attrs['data-lj_action_housedel_id']
+
                                     info_chain=a.find('div.houseInfo', first=True).text ##寻找包含户型面积等信息的元素
                                     info_list=info_chain.split(' | ') #信息分块作list，每项皆为str
                                     NORE=NORE_element.text # NORE：“Name of Real Estate”，小区名称的缩写，此处.text可直接提取
-                                    RE_url=''.join(NORE_element.absolute_links)  # 提取小区链接，若集内无该小区，则进入并获取地址，挂牌均价，以及建筑年份信息
-                                    # NORE_id=NORE_element.attrs['']
+                                    RE_url=''.join(NORE_element.absolute_links)  # 提取小区链接，若集内无该小区，则进入并获取地址，挂牌均价，以及建筑年份信息（不一定所有楼盘信息都有小区信息）
                                     structure=info_list[1] #网站格式很恒定，拿下来肯定对
                                     area=info_list[2]   # 该户面积信息
                                     TPrice=a.find('div.totalPrice', first=True).text
@@ -184,26 +154,32 @@ class Parser():
     # ------> Real_estate(验证)
     # 已存在的房产信息将不会被录入（房屋身份为元素中的data-housecode，并会出现在url当中而这个东西是不会也不应该重复的）
                                         self.houses.add(title_url)
-                                        self.c.execute(f"""insert into Properties_v2 values('{self.city}', '{district}', '{street}', '{NORE}', '{structure}', '{area}', '{TPrice}', '{UnitPrice}', '{title_url}')""")
+                                        self.c.execute(f"""insert into Properties_v2 values('{house_id}', '{self.city}', '{district}', '{street}', '{NORE}', '{structure}', '{area}', '{TPrice}', '{UnitPrice}', '{title_url}') ON DUPLICATE KEY UPDATE TPrice='{TPrice}', UnitPrice='{UnitPrice}' """)
                                         self.conn.commit()
                                         if NORE not in self.real_estates:
                                             if RE_url:
-                                                for house_id, city, district, street, NORE, address, structure, area, YOB, TPrice, UPrice, time_stamp in self.get_target_detail(RE_url):
+                                                RE_id=re.findall(r"u/(.*\d?)/", RE_url)[0]    # 若该小区未出现过并且从小区链接当中挖取小区ID（正则式）
+                                                for city, district, street, NORE, address, structure, area, YOB, TPrice, UPrice, time_stamp in self.get_target_detail(RE_url): # 呼叫self.get_target_detail(RE_url)来获得city, district, street, NORE, address, structure, area, YOB, TPrice, UPrice, time_stamp等关键变量
                                                     print([house_id, city, district, street, NORE, address, structure, area, YOB, TPrice, UPrice, time_stamp])
     # ------> c.execute -> write()
-                                                    self.c.execute(f""" insert into Real_Estates_v2 values ('{house_id}', '{city}', '{district}', '{street}', '{NORE}', '{address}', '{structure}', '{area}', '{YOB}', '{TPrice}', '{UPrice}', '{time_stamp}')""")
+                                                    self.c.execute(f""" insert into Real_Estates_v2 values ('{house_id}', '{city}', '{district}', '{street}', '{NORE}', '{address}', '{structure}', '{area}', '{YOB}', '{TPrice}', '{UPrice}', '{time_stamp}') ON DUPLICATE KEY UPDATE address='{address}', YOB='{YOB}', TPrice='{TPrice}', UPrice='{UPrice}', time='{time_stamp}' """)
                                                     self.conn.commit()
+                                            
+                                            else:
+                                                print(house_id, self.city, district, street, NORE, structure, area, TPrice, UnitPrice, title_url)
+                                                self.c.execute(f""" insert into Real_Estates_v2 values ('{house_id}', '{self.city}', '{district}', '{street}', '{NORE}', 'None', '{structure}', '{area}', 'None', '{TPrice}', '{UnitPrice}', '{time_stamp}') ON DUPLICATE KEY UPDATE TPrice='{TPrice}', UPrice='{UnitPrice}', time='{time_stamp}' """)
+                                                self.conn.commit()
 
                                         else:
                                             for city, district, street, NORE, address, UPrice, YOB in self.real_estates[NORE].output():
                                                 if UPrice != None:
                                                     print([house_id, self.city, district, street, NORE, address, structure, area, YOB, TPrice, UPrice, time_stamp])
-                                                    self.c.execute(f""" insert into Real_Estates_v2 values ('{house_id}', '{city}', '{district}', '{street}', '{NORE}', '{address}', '{structure}', '{area}', '{YOB}', '{TPrice}', '{UPrice}', '{time_stamp}')""")
+                                                    self.c.execute(f""" insert into Real_Estates_v2 values ('{house_id}', '{city}', '{district}', '{street}', '{NORE}', '{address}', '{structure}', '{area}', '{YOB}', '{TPrice}', '{UPrice}', '{time_stamp}') ON DUPLICATE KEY UPDATE address='{address}', YOB='{YOB}', TPrice='{TPrice}', UPrice='{UPrice}', time='{time_stamp}' """)
                                                     self.conn.commit()
                                 
                                                 else:
                                                     print([house_id, self.city, district, street, NORE, address, structure, area, YOB, TPrice, UnitPrice, time_stamp])
-                                                    self.c.execute(f""" insert into Real_Estates_v2 values ('{house_id}', '{city}', '{district}', '{street}', '{NORE}', '{address}', '{structure}', '{area}', '{YOB}', '{TPrice}', '{UnitPrice}', '{time_stamp}')""")
+                                                    self.c.execute(f""" insert into Real_Estates_v2 values ('{house_id}', '{city}', '{district}', '{street}', '{NORE}', '{address}', '{structure}', '{area}', '{YOB}', '{TPrice}', '{UnitPrice}', '{time_stamp}') ON DUPLICATE KEY UPDATE address='{address}', YOB='{YOB}', TPrice='{TPrice}', UPrice='{UPrice}', time='{time_stamp}' """)
                                                     self.conn.commit()
                             
                                     else:
@@ -215,8 +191,8 @@ class Parser():
 
                     
                             n+=1
-                            time.sleep(random.randint(8, 23))
-                            r=self.enter_sub(street_url+f'pg{n}/', referer) # 片区下一页
+                            time.sleep(random.randint(4,9))
+                            r=self.enter_url(street_url+f'pg{n}/', referer) # 片区下一页
                             temp_base_url=r.html.base_url   # 找base_url页码
                             temp=r.html.find('ul.sellListContent > li > div.info') # 新片区页面抓取在售楼盘列表信息
 
@@ -228,7 +204,7 @@ class Parser():
                 
                         self.houses.clear() # 每片区清空房子ID URL
                         self.real_estates.clear() # 每片区清空小区字典
-                        time.sleep(random.randint(7, 26))
+                        time.sleep(random.randint(6, 23))
                 
                     else: # if片区url判断循环
                         pass
@@ -242,57 +218,69 @@ class Parser():
     def get_target_detail(self, prompt):
         global RE_base_url
         referer=r.html.base_url
+        
         while True:
-            try: # 这个try没有也罢，因为到了这个份上基本不会出现需要重新渲染网页的情况
-                self.enter_sub(prompt, referer) #获取目标项
+            try: # 为了继续进行下去并跳过空缺项信息
+                self.enter_url(prompt, referer) #获取目标项
                 RE_base_url=r.html.base_url #可以日后加报错日志用
-                address=r.html.find('div.detailDesc', first=True).text
-                YOB=r.html.find('div.xiaoquInfoItem > span.xiaoquInfoContent', first=True).text
-                if not re.findall(r"\d\d\d\d", YOB):
+                
+                if RE_base_url.endswith(f"u/{RE_id}/"): # 检验进入后的链接是不是正确目标URL，若是，则爬取目标信息
+                    address=r.html.find('div.detailDesc', first=True).text
+                    YOB=r.html.find('div.xiaoquInfoItem > span.xiaoquInfoContent', first=True).text
+                    
+                    if not re.findall(r"\d\d\d\d", YOB):
+                        YOB=None
+                
+                    try:
+                        UPrice=r.html.find('span.xiaoquUnitPrice', first=True).text+'元/平米'
+                    
+                    except:
+                        UPrice=None # 为了向数据库提交正确信息
+                
+                else: # 若不是，则返回空值
+                    address=None
                     YOB=None
-                
-                try:
-                    UPrice=r.html.find('span.xiaoquUnitPrice', first=True).text+'元/平米'
-                except:
-                    UPrice=None
-                
+                    UPrice=None # 为了向数据库提交正确信息
+
     # ------> Real_estate(写入)
-                self.real_estates[NORE] = Real_estate(self.city, district, street, NORE, address, UPrice, YOB)
-                self.real_estates[NORE].to_stock()
+                self.real_estates[NORE] = Real_estate(RE_id, self.city, district, street, NORE, address, UPrice, YOB) # "物化"小区
+                self.real_estates[NORE].to_stock() #存库里
                 
                 if UPrice==None:    # 这个if是为了将房产写入数据库时不会把挂牌单价写成‘None’
                     UPrice=UnitPrice # 此时如果该房产所在小区无挂牌单价，则以该房产单价代替
                 
-                yield house_id, self.city, district, street, NORE, address, structure, area, YOB, TPrice, UPrice, time_stamp
+                yield self.city, district, street, NORE, address, structure, area, YOB, TPrice, UPrice, time_stamp # 向爬虫本体生成待攫取数据
                 r.close()
                 break
 
             except Exception as e:
                 print(e)
                 print(RE_base_url) # 报告一下爬到哪个小区出的错，弃疗跳过
-                self.write_error_RE_info(traceback.format_stack())
+                self.write_error_RE_info(traceback.format_stack(), e)
                 print('Skipped')
+                r.close()
                 break
 
-    def write_error_RE_info(self, prompt):
+    def write_error_RE_info(self, prompt, error=None):
         with open('error_RE_info.txt', mode='a+', encoding='utf-8') as f:
-            try:
-                f.writelines(prompt)
-                f.write(f"\n'{time_stamp}'\n")
+            if error:
+                f.write(str(error)+'\n')
+            f.writelines(prompt)
+            f.write(f"\n'{time_stamp}'\n")
+            if NORE:
                 f.write(f"\n'{NORE}'\n")
+            try:
                 f.write(f'[{RE_url}] ---> [{RE_base_url}]\n')
-                f.write('==============================================\n\n')
-            
-            except:
-                f.writelines(prompt)
-                f.write(f"\n'{time_stamp}'\n")
-                if NORE:
-                    f.write(f"\n'{NORE}'\n")
-                f.write('==============================================\n\n')
+            except NameError:
+                pass
+            except Exception as e:
+                f.write('\n'+str(e)+'\n')
+            f.write('==============================================\n\n')
         
         
 class Real_estate():
-    def __init__(self, city, district, street, NORE, address, UPrice, YOB):
+    def __init__(self, id, city, district, street, NORE, address, UPrice, YOB):
+        self.id=RE_id
         self.city=city
         self.district=district
         self.street=street
@@ -308,7 +296,7 @@ class Real_estate():
         yield self.city, self.district, self.street, self.NORE, self.address, self.UPrice, self.YOB
 
     def to_stock(self):
-        self.c.execute(f"""insert into Real_Estate_list values('{self.city}', '{self.district}', '{self.street}', '{self.NORE}', '{self.address}', '{self.UPrice}', '{self.YOB}', '{time_stamp}')""")
+        self.c.execute(f"""insert into Real_Estate_list_v2 values('{self.id}', '{self.city}', '{self.district}', '{self.street}', '{self.NORE}', '{self.address}', '{self.UPrice}', '{self.YOB}', '{time_stamp}') ON DUPLICATE KEY UPDATE address='{self.address}', UPrice='{self.UPrice}', YOB='{self.YOB}', time='{time_stamp}' """)
         self.conn.commit()
 
 
