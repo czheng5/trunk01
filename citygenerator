@@ -1,0 +1,14 @@
+import traceback
+
+def city_gen():
+
+    try:
+        fp=open("city_list_part1.txt", mode="r", encoding="utf-8")
+    except FileNotFoundError as e:
+        traceback.print_exc()
+        print(e)
+    else:
+        with fp:
+            for line in fp.readlines():
+                li=line.strip("\n").split(", ")
+                yield li[0], li[1], li[2]
