@@ -55,139 +55,26 @@ proxy=random.choice(proxy_list)
     # def __init__(self):
         # self.house=dict()
         # self.real_estates=dict()
+        # self.conn=mysql.connector.connect(host="10.21.9.129", port="10001", user="crawler", passwd="eko3kf", database="crawler")
+        # self.c=conn.cursor()
+        # self.city=city
 
-    # def location_selector(self, prompt):
-        # global city
-        # decision=input(prompt)
-    
-        # if decision in loc_dict:
-        #     loc=loc_dict[decision]
-        #     city=decision
-
-        # return loc
-
-    # def enter_url(prompt):
-        # global r
-        # while True:
-            # time.sleep(random.randint(3,8))
-            # try:
-                # r=HTMLSession().get(prompt, headers={'user-agent': random.choice(user_agent_list), 'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3', 'accept-encoding': 'gzip, deflate, br', 'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8', }, proxies={'http':'10.100.129.154:11808', 'https':'10.100.129.154:11808'}, cookies=False) #, proxies={'http':'proxy.tplife.com:31151', 'https':'proxy.tplife.com:31151'}
-    
-                # if r.status_code in [200, 304]:
-                    # return r
-                # else:
-                    # time.sleep(random.randint(60,90))
-            # except Exception as e:
-                # traceback.print_exc(file=sys.stdout)
-                # print('Error sleeping...')
-                # time.sleep(random.randint(300, 600))
-
-    # def enter_sub(prompt, referer):
-        # global r
-        # # referer=r.html.base_url
-        # while True:
-            # time.sleep(random.randint(3,8))
-            # try:
-                # r=HTMLSession().get(prompt, headers={'user-agent': random.choice(user_agent_list), 'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3', 'accept-encoding': 'gzip, deflate, br', 'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8', 'referer': referer, }, proxies={'http':'10.100.129.154:11808', 'https':'10.100.129.154:11808'}, cookies=False) #, proxies={'http':'proxy.tplife.com:31151', 'https':'proxy.tplife.com:31151'}
-    
-                # if r.status_code in [200, 304]:
-                    # return r
-                # else:
-                    # time.sleep(random.randint(60,90))
-            # except Exception as e:
-                # traceback.print_exc(file=sys.stdout)
-                # print('Error sleeping...')
-                # time.sleep(random.randint(300, 600))
+    # def enter_url(self, prompt, referer):
+        """ 有无referer都要能用，整合一体 """
 
     # def parse_it(self):
-        # locl=self.location_selector('请输入目标地名（例：“上海市” 则输入 “上海”）：\n')
-        # url=f'https://{locl}.lianjia.com/ershoufang/'
-        # r=enter_url(url)
-    # --> district
-        # districts=r.html.find('div.position > dl > dd > div > div', first=True).find('a') ##区元素
-    # ----> street
-            # for item in districts:
-                # district=item.text #区名
-                # district_url=''.join(item.absolute_links) #区url
-                # referer=r.html.base_url #取当前页面base_url做进入区级页面的referer
-                # r=enter_sub(district_url, referer)
-                # streets=r.html.find('div.position > dl > dd > div > div')[1].find('a') #片元素
-    # ----> House()
-                # for s_item in streets:
-                    # street=s_item.text #片区名字
-                    # street_url=''.join(s_item.absolute_links) #片区链接
-                    # referer=r.html.base_url #取当前页面base_url做进入片级页面的referer
-                    # r=enter_sub(street_url, referer)
-                    ##房子在这翻页
-                    # n=1
-    # ------> Real_estate()
-                    # while True:
-                        # temp=r.html.find('ul.sellListContent > li > div.info')
-                        # referer=r.html.base_url
-                
-                        # for a in temp:
-                            # b=a.find('div.houseInfo > a', first=True) ##寻找包含小区名称的元素
-                            # c=a.find('div.houseInfo', first=True).text ##寻找包含户型面积等信息的元素
-                            # d=c.split(' | ') #信息分块
-                            # NORE=b.text
-                            # RE_url=b.attrs['href']
-                            # structure=d[1] #网站格式很恒定，拿下来肯定对
-                            # area=d[2]
-                            # TPrice=a.find('div.totalPrice', first=True).text
-                            # if NORE not in self.real_estate:
-                                # get_target_detail(RE_url)
-                            # else:
-                                # for city, district, street, NORE, address, UPrice, YOB in self.real_estates[NORE]:
-                                    # print([city, district, street, NORE, address, structure, area, YOB, TPrice, UPrice, time_stamp])
-    # ------> c.execute -> write()
-                                    # c.excecute(f""" insert into Real_Estates_2 values ('{city}', '{district}', '{street}', '{NORE}', '{address}', '{structure}', '{area}', '{YOB}', '{TPrice}', '{UPrice}', '{time_stamp}')""")
-                        ##找base_url页码
-                        # n+=1
-                        # r=enter_sub(street_url+f'pg{n}/', referer)
-                        # temp_base_url=r.html.base_url
-                
-                        # if temp_base_url.endswith(f"pg{n}/") and temp: #有页码
-                            # pass
-
-                        # else:
-                            # break
-                    # m+=1 #这个计数没用了
-                    # time.sleep(random.randint(20, 40))
+        """ 从列表TXT文件中读取并返回省市URL等信息 """
+        """ 拼接URL进入二手房链接 """
+        """ 进入区，缓存区名，进入片，缓存片名 """
+        """ 区，片 名 替换为“selected”项文字，爬取房产信息，若无小区信息则点进小区链接 """
+        """ 分情况写入，无信息部分则留“None” """
+        # 爬完即self.conn.close()
                     
     # def get_target_detail(prompt):
-        # global temp_base_url
-        # referer=r.html.base_url
-        # while True:
-            # try:
-                # enter_sub(prompt, referer) #获取目标项
-                # temp_base_url=r.html.base_url #可以日后加报错日志用
-                # address=r.html.find('div.detailDesc', first=True).text
-                # YOB=r.html.find('div.xiaoquInfoItem > span.xiaoquInfoContent', first=True).text
-                # UPrice=r.html.find('span.xiaoquUnitPrice', first=True).text+'元/平米'
-                # time_stamp=time.asctime(time.localtime())
-                # self.real_estates[NORE] = Real_estate(city, district, street, NORE, address, UPrice, YOB)
-                # print([city, district, street, NORE, address, structure, area, YOB, TPrice, UPrice, time_stamp])
-                # c.execute(f""" insert into Real_Estates_2 values ('{city}', '{district}', '{street}', '{NORE}', '{address}', '{structure}', '{area}', '{YOB}', '{TPrice}', '{UPrice}', '{time_stamp}')""")
-                # conn.commit()
-                # break
-            # except Exception as e:
-                # print(e)
-                # print('Error sleeping...')
-                # time.sleep(random.randint(1800, 4800))
-                # print('Retrying...')
-                
-                
-//# class House():
-//    # def __init__(self,city, district, street, structure, area, TPrice):
-//        # self.city=city
-//        # self.district=district
-//        # self.street=street
-//        # self.structure=structure
-//        # self.area=area
-//        # self.TPrice=TPrice
-//暂时没用，以后可用于统计该小区当时有多少房屋在售        
-        
-# class Real_estate():
+        """ 获取小区信息，返回小区ID，地址，挂牌均价以及其他重复信息 """
+
+
+# class Estate():
     # def __init__(self,city, district, street, NORE, address, UPrice, YOB):
         # self.city=city
         # self.district=district
@@ -200,16 +87,12 @@ proxy=random.choice(proxy_list)
 
 # if __name__ == "__main__":
     # while True:
-        # conn=mysql.connector.connect(host="10.21.9.129", port="10001", user="crawler", passwd="eko3kf", database="crawler")
-        # c=conn.cursor()
-
         # try:
         # Parser.parse_it()
         # option = input("\nParse Again? Input anything to continue, or enter Q to quit: \n")
             
         # if option == "Q" or option == "q":
             # print("\nHave a nice day! Good-Bye!\n")
-            # conn.close()
             # quit()
         # else:
             # pass
