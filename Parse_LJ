@@ -124,7 +124,8 @@ class Parser():
                             street=r.html.find('div.position > dl > dd > div > div')[1].find('a.selected')[0].text # 替换临时片名
                         except:
                             self.write_error_RE_info(traceback.format_stack())
-                        temp=r.html.find('ul.sellListContent > li > div.info.clear')
+                        
+                        temp=r.html.find('ul.sellListContent > li > div.info.clear') # 解析房产列表信息
                         n=1 # 房子用n数页数翻页，由于第二页才开始出现页数结尾，则n从1开始，页数结尾由2开始('pg2/')
     
                         while True:
@@ -143,12 +144,19 @@ class Parser():
                                     info_list=info_chain.split(' | ') #信息分块作list，每项皆为str
                                     NORE=NORE_element.text # NORE：“Name of Real Estate”，小区名称的缩写，此处.text可直接提取
                                     RE_url=''.join(NORE_element.absolute_links)  # 提取小区链接，若集内无该小区，则进入并获取地址，挂牌均价，以及建筑年份信息（不一定所有楼盘信息都有小区信息）
-                                    structure=info_list[1] #网站格式很恒定，拿下来肯定对
-                                    area=info_list[2]   # 该户面积信息
-                                    TPrice=a.find('div.totalPrice', first=True).text
-                                    UnitPrice=a.find('div.unitPrice', first=True).text[2:]
-                                    time_stamp=time.asctime(time.localtime())
-                                    title_url=''.join(a.find('div.title > a', first=True).absolute_links)
+                                    
+                                    if len(info_list) > 5:
+                                        structure=info_list[2] # 打脸的时候一般都是独栋别墅这种比别的内容多一项的，于是两个目标全部向后挪一位
+                                        area=info_list[3]
+
+                                    else:
+                                        structure=info_list[1] #平常网站格式很恒定，拿下来肯定对(偶尔会打脸)
+                                        area=info_list[2]   # 该户面积信息
+                                    
+                                    TPrice=a.find('div.totalPrice', first=True).text # 该楼盘总价
+                                    UnitPrice=a.find('div.unitPrice', first=True).text[2:]  # 该楼盘单价
+                                    time_stamp=time.asctime(time.localtime())   # 爬此条的时间戳
+                                    title_url=''.join(a.find('div.title > a', first=True).absolute_links) # 该楼盘URL
 
                                     if title_url not in self.houses:
     # ------> Real_estate(验证)
@@ -163,24 +171,24 @@ class Parser():
                                                     print([house_id, city, district, street, NORE, address, structure, area, YOB, TPrice, UPrice, time_stamp])
     # ------> c.execute -> write()
                                                     self.c.execute(f""" insert into Real_Estates_v2 values ('{house_id}', '{city}', '{district}', '{street}', '{NORE}', '{address}', '{structure}', '{area}', '{YOB}', '{TPrice}', '{UPrice}', '{time_stamp}') ON DUPLICATE KEY UPDATE address='{address}', YOB='{YOB}', TPrice='{TPrice}', UPrice='{UPrice}', time='{time_stamp}' """)
-                                                    self.conn.commit()
+                                                    self.conn.commit() # 以上：若重新爬，则更新 地址，竣工年份，房屋总价，小区挂牌均价，以及时间戳
                                             
                                             else:
                                                 print(house_id, self.city, district, street, NORE, structure, area, TPrice, UnitPrice, title_url)
                                                 self.c.execute(f""" insert into Real_Estates_v2 values ('{house_id}', '{self.city}', '{district}', '{street}', '{NORE}', 'None', '{structure}', '{area}', 'None', '{TPrice}', '{UnitPrice}', '{time_stamp}') ON DUPLICATE KEY UPDATE TPrice='{TPrice}', UPrice='{UnitPrice}', time='{time_stamp}' """)
-                                                self.conn.commit()
+                                                self.conn.commit()  # 以上：若重新爬，则更新 房屋总价，房屋单价，以及时间戳
 
                                         else:
-                                            for city, district, street, NORE, address, UPrice, YOB in self.real_estates[NORE].output():
-                                                if UPrice != None:
+                                            for city, district, street, NORE, address, UPrice, YOB in self.real_estates[NORE].output(): # 需要小心：网站原本有小区信息后来又撤销，则信息变为“None”
+                                                if UPrice != None: # 若有挂牌均价
                                                     print([house_id, self.city, district, street, NORE, address, structure, area, YOB, TPrice, UPrice, time_stamp])
                                                     self.c.execute(f""" insert into Real_Estates_v2 values ('{house_id}', '{city}', '{district}', '{street}', '{NORE}', '{address}', '{structure}', '{area}', '{YOB}', '{TPrice}', '{UPrice}', '{time_stamp}') ON DUPLICATE KEY UPDATE address='{address}', YOB='{YOB}', TPrice='{TPrice}', UPrice='{UPrice}', time='{time_stamp}' """)
-                                                    self.conn.commit()
+                                                    self.conn.commit()  # 以上：若重新爬，则更新 地址，竣工年份，房屋总价，小区挂牌均价，以及时间戳
                                 
-                                                else:
+                                                else: # 若无挂牌均价
                                                     print([house_id, self.city, district, street, NORE, address, structure, area, YOB, TPrice, UnitPrice, time_stamp])
-                                                    self.c.execute(f""" insert into Real_Estates_v2 values ('{house_id}', '{city}', '{district}', '{street}', '{NORE}', '{address}', '{structure}', '{area}', '{YOB}', '{TPrice}', '{UnitPrice}', '{time_stamp}') ON DUPLICATE KEY UPDATE address='{address}', YOB='{YOB}', TPrice='{TPrice}', UPrice='{UPrice}', time='{time_stamp}' """)
-                                                    self.conn.commit()
+                                                    self.c.execute(f""" insert into Real_Estates_v2 values ('{house_id}', '{city}', '{district}', '{street}', '{NORE}', '{address}', '{structure}', '{area}', '{YOB}', '{TPrice}', '{UnitPrice}', '{time_stamp}') ON DUPLICATE KEY UPDATE address='{address}', YOB='{YOB}', TPrice='{TPrice}', UPrice='{UnitPrice}', time='{time_stamp}' """)
+                                                    self.conn.commit()  # 以上：若重新爬，则更新 地址，竣工年份，房屋总价，房屋单价，以及时间戳
                             
                                     else:
                                         pass
@@ -206,7 +214,7 @@ class Parser():
                         self.real_estates.clear() # 每片区清空小区字典
                         time.sleep(random.randint(6, 23))
                 
-                    else: # if片区url判断循环
+                    else: # if片区url判断循环：若已进入过该片区URL，则跳过
                         pass
         
             self.streets.clear()    # 每个市清理一次街道URL内存
