@@ -1,13 +1,14 @@
 {
     "code-runner.executorMap": {
-        "python": "E:\\Python3.7.2\\python.exe"
+        "python": "python ",
     },
+    "python.pythonPath":"E:\\Python3.7.2\\python.exe",
     "code-runner.runInTerminal": true,
-    "window.zoomLevel": -1,
-    "workbench.colorTheme": "Blakai Theme",
-    "editor.fontSize": 14,
+    "window.zoomLevel": -1.5,
+    "editor.fontSize": 17,
     "editor.tabSize":4,
     "editor.wordWrap":"on",
     "terminal.integrated.fontSize": 16,
-    "terminal.integrated.shell.windows": "D:\\Git\\bin\\bash.exe", //location of Git folder
+    "terminal.integrated.shell.windows": "D:\\Git\\bin\\bash.exe",
+    "workbench.colorTheme": "Punk Dark Theme",
 }
